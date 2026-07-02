@@ -1,0 +1,38 @@
+.detailGroup {
+  min-width: 0;
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: minmax(56px, 92px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-height: 34px;
+}
+
+.statIcon {
+  justify-self: start;
+  max-width: 100%;
+}
+
+.statProgress {
+  min-width: 80px;
+}
+
+.statValue {
+  min-width: 116px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fullComboSyncSection {
+  flex-direction: column;
+
+  @media (max-width: 28rem) {
+    flex-direction: row;
+  }
+
+  @media (max-width: 26rem) {
+    flex-direction: column;
+  }
+}

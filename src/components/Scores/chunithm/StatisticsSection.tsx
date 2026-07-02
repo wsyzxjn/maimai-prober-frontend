@@ -1,103 +1,101 @@
-import {
-  Card,
-  Grid,
-  Image,
-  rem,
-  Text,
-  Group,
-  Spoiler,
-  Divider,
-  NumberFormatter,
-  Flex,
-  Box,
-} from "@mantine/core";
+import { Card, Grid, Spoiler, Text } from "@mantine/core";
+import { useMemo } from "react";
+import { ScoreStatRows } from "../ScoreStatRows";
 import { useMediaQuery } from "@mantine/hooks";
 import { ChunithmScoreProps } from "@/types/score";
 
-const RateStatistics = ({ scores }: { scores: ChunithmScoreProps[] }) => {
-  const rate = [
-    { id: "sssp", min: 1009000, max: Infinity },
-    { id: "sss", min: 1007500, max: 1009000 },
-    { id: "ssp", min: 1005000, max: 1007500 },
-    { id: "ss", min: 1000000, max: 1005000 },
-    { id: "sp", min: 990000, max: 1000000 },
-    { id: "s", min: 975000, max: 990000 },
-    { id: "aaa", min: 950000, max: 975000 },
-    { id: "aa", min: 925000, max: 950000 },
-    { id: "a", min: 900000, max: 925000 },
-  ];
+const rate = [
+  { id: "sssp", min: 1009000, max: Infinity },
+  { id: "sss", min: 1007500, max: 1009000 },
+  { id: "ssp", min: 1005000, max: 1007500 },
+  { id: "ss", min: 1000000, max: 1005000 },
+  { id: "sp", min: 990000, max: 1000000 },
+  { id: "s", min: 975000, max: 990000 },
+  { id: "aaa", min: 950000, max: 975000 },
+  { id: "aa", min: 925000, max: 950000 },
+  { id: "a", min: 900000, max: 925000 },
+];
 
-  function calculateCount(scores: ChunithmScoreProps[], minScore: number, maxScore: number) {
-    return scores.filter((score) => score.score >= minScore && score.score < maxScore).length;
+const fullCombo = ["alljusticecritical", "alljustice", "fullcombo"];
+
+const addCumulativeCount = (counts: number[], startIndex: number) => {
+  for (let index = startIndex; index < counts.length; index++) {
+    counts[index]++;
   }
+};
 
+const RateStatistics = ({ rows, total }: { rows: number[]; total: number }) => {
   return (
-    <Box w="100%">
-      {rate.map((r, index) => {
-        let count = calculateCount(scores, r.min, r.max);
-        for (let i = 0; i < index; i++) {
-          count += calculateCount(scores, rate[i].min, rate[i].max);
-        }
-        return (
-          <Group key={r.id} mb="xs" h={30} wrap="nowrap">
-            <Image src={`/assets/chunithm/music_rank/${r.id}_s.webp`} h={18} w="auto" />
-            <Divider style={{ flex: 1 }} variant="dashed" />
-            <Text fz={20} style={{ lineHeight: rem(20) }}>
-              <NumberFormatter value={count} thousandSeparator />
-              <span style={{ fontSize: 16, marginLeft: 4 }}>
-                / <NumberFormatter value={scores.length} thousandSeparator />
-              </span>
-            </Text>
-          </Group>
-        );
-      })}
-    </Box>
+    <ScoreStatRows
+      defaultIconHeight={18}
+      rows={rate.map((r, index) => ({
+        count: rows[index],
+        icon: `/assets/chunithm/music_rank/${r.id}_s.webp`,
+        id: r.id,
+      }))}
+      total={total}
+    />
   );
 };
 
-const FullComboStatistics = ({ scores }: { scores: ChunithmScoreProps[] }) => {
-  const full_combo = ["alljusticecritical", "alljustice", "fullcombo"];
-
+const FullComboStatistics = ({ rows, total }: { rows: number[]; total: number }) => {
   return (
-    <Box w="100%">
-      {full_combo.map((r, index) => (
-        <Group key={r} mb="xs" h={30} wrap="nowrap">
-          <Image src={`/assets/chunithm/music_icon/${r}_s.webp`} h={18} w="auto" />
-          <Divider style={{ flex: 1 }} variant="dashed" />
-          <Text fz={20} style={{ lineHeight: rem(20) }}>
-            <NumberFormatter
-              value={
-                scores.filter((score) => {
-                  return full_combo.slice(0, index + 1).includes(score.full_combo);
-                }).length
-              }
-              thousandSeparator
-            />
-            <span style={{ fontSize: 16, marginLeft: 4 }}>
-              / <NumberFormatter value={scores.length} thousandSeparator />
-            </span>
-          </Text>
-        </Group>
-      ))}
-    </Box>
+    <ScoreStatRows
+      defaultIconHeight={18}
+      rows={fullCombo.map((r, index) => ({
+        count: rows[index],
+        icon: `/assets/chunithm/music_icon/${r}_s.webp`,
+        id: r,
+      }))}
+      total={total}
+    />
   );
+};
+
+const useStatistics = (scores: ChunithmScoreProps[]) => {
+  return useMemo(() => {
+    const cumulativeRateCounts = Array(rate.length).fill(0) as number[];
+    const cumulativeFullComboCounts = Array(fullCombo.length).fill(0) as number[];
+
+    for (const score of scores) {
+      for (let index = 0; index < rate.length; index++) {
+        if (score.score >= rate[index].min) {
+          cumulativeRateCounts[index]++;
+        }
+      }
+
+      const fullComboIndex = fullCombo.indexOf(score.full_combo);
+      if (fullComboIndex !== -1) {
+        addCumulativeCount(cumulativeFullComboCounts, fullComboIndex);
+      }
+    }
+
+    return {
+      rateCounts: cumulativeRateCounts,
+      fullComboCounts: cumulativeFullComboCounts,
+    };
+  }, [scores]);
 };
 
 export const ChunithmStatisticsSection = ({ scores }: { scores: ChunithmScoreProps[] }) => {
-  const small = useMediaQuery("(max-width: 30rem)");
   const extraSmall = useMediaQuery("(max-width: 28rem)");
+  const statistics = useStatistics(scores);
 
   return (
     <Card withBorder radius="md">
-      <Spoiler maxHeight={120} showLabel="显示详细统计信息..." hideLabel="隐藏详细统计信息">
-        <Grid gap={small ? "md" : "xl"}>
+      <Spoiler maxHeight={110} showLabel="显示详细分布..." hideLabel="隐藏详细分布">
+        <Grid gap="xl">
           <Grid.Col span={extraSmall ? 12 : 6}>
-            <RateStatistics scores={scores} />
+            <Text size="lg" fw={700} mb="xs">
+              达成率
+            </Text>
+            <RateStatistics rows={statistics.rateCounts} total={scores.length} />
           </Grid.Col>
           <Grid.Col span={extraSmall ? 12 : 6}>
-            <Flex gap="md" direction={extraSmall ? "row" : "column"}>
-              <FullComboStatistics scores={scores} />
-            </Flex>
+            <Text size="lg" fw={700} mb="xs">
+              连击
+            </Text>
+            <FullComboStatistics rows={statistics.fullComboCounts} total={scores.length} />
           </Grid.Col>
         </Grid>
       </Spoiler>

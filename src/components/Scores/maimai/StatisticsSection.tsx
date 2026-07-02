@@ -1,138 +1,133 @@
-import {
-  Card,
-  Grid,
-  Image,
-  rem,
-  Text,
-  Group,
-  Spoiler,
-  Divider,
-  NumberFormatter,
-  Flex,
-  Box,
-} from "@mantine/core";
-import classes from "./StatisticsSection.module.css";
+import { Box, Card, Flex, Grid, Spoiler, Text } from "@mantine/core";
+import { useMemo } from "react";
+import classes from "../StatisticsSection.module.css";
+import { ScoreStatRows } from "../ScoreStatRows";
 import { useMediaQuery } from "@mantine/hooks";
 import { MaimaiScoreProps } from "@/types/score";
 
-const RateStatistics = ({ scores }: { scores: MaimaiScoreProps[] }) => {
-  const rate = [
-    { id: "sssp", min: 100.5, max: Infinity },
-    { id: "sss", min: 100, max: 100.5 },
-    { id: "ssp", min: 99.5, max: 100 },
-    { id: "ss", min: 99, max: 99.5 },
-    { id: "sp", min: 98, max: 99 },
-    { id: "s", min: 97, max: 98 },
-    { id: "aaa", min: 94, max: 97 },
-    { id: "aa", min: 90, max: 94 },
-    { id: "a", min: 80, max: 90 },
-  ];
+const rate = [
+  { id: "sssp", min: 100.5, max: Infinity },
+  { id: "sss", min: 100, max: 100.5 },
+  { id: "ssp", min: 99.5, max: 100 },
+  { id: "ss", min: 99, max: 99.5 },
+  { id: "sp", min: 98, max: 99 },
+  { id: "s", min: 97, max: 98 },
+  { id: "aaa", min: 94, max: 97 },
+  { id: "aa", min: 90, max: 94 },
+  { id: "a", min: 80, max: 90 },
+];
 
-  function calculateCount(
-    scores: MaimaiScoreProps[],
-    minAchievements: number,
-    maxAchievements: number,
-  ) {
-    return scores.filter(
-      (score) => score.achievements >= minAchievements && score.achievements < maxAchievements,
-    ).length;
+const fc = ["app", "ap", "fcp", "fc"];
+const fs = ["fsdp", "fsd", "fsp", "fs"];
+
+const addCumulativeCount = (counts: number[], startIndex: number) => {
+  for (let index = startIndex; index < counts.length; index++) {
+    counts[index]++;
   }
+};
 
+const RateStatistics = ({ rows, total }: { rows: number[]; total: number }) => {
   return (
-    <Box w="100%">
-      {rate.map((r, index) => {
-        let count = calculateCount(scores, r.min, r.max);
-        for (let i = 0; i < index; i++) {
-          count += calculateCount(scores, rate[i].min, rate[i].max);
+    <ScoreStatRows
+      defaultIconHeight={30}
+      rows={rate.map((r, index) => ({
+        count: rows[index],
+        icon: `/assets/maimai/music_rank/${r.id}.webp`,
+        id: r.id,
+      }))}
+      total={total}
+    />
+  );
+};
+
+const FullComboStatistics = ({ rows, total }: { rows: number[]; total: number }) => {
+  return (
+    <ScoreStatRows
+      defaultIconHeight={30}
+      rows={fc.map((r, index) => ({
+        count: rows[index],
+        icon: `/assets/maimai/music_icon/${r}.webp`,
+        id: r,
+      }))}
+      total={total}
+    />
+  );
+};
+
+const FullSyncStatistics = ({ rows, total }: { rows: number[]; total: number }) => {
+  return (
+    <ScoreStatRows
+      defaultIconHeight={30}
+      rows={fs.map((r, index) => ({
+        count: rows[index],
+        icon: `/assets/maimai/music_icon/${r}.webp`,
+        id: r,
+      }))}
+      total={total}
+    />
+  );
+};
+
+const useStatistics = (scores: MaimaiScoreProps[]) => {
+  return useMemo(() => {
+    const cumulativeRateCounts = Array(rate.length).fill(0) as number[];
+    const cumulativeFcCounts = Array(fc.length).fill(0) as number[];
+    const cumulativeFsCounts = Array(fs.length).fill(0) as number[];
+
+    for (const score of scores) {
+      for (let index = 0; index < rate.length; index++) {
+        if (score.achievements >= rate[index].min) {
+          cumulativeRateCounts[index]++;
         }
-        return (
-          <Group key={r.id} mb="xs" wrap="nowrap">
-            <Image src={`/assets/maimai/music_rank/${r.id}.webp`} h={30} w="auto" />
-            <Divider style={{ flex: 1 }} variant="dashed" />
-            <Text fz={20} style={{ lineHeight: rem(20) }}>
-              <NumberFormatter value={count} thousandSeparator />
-              <span style={{ fontSize: 16, marginLeft: 4 }}>
-                / <NumberFormatter value={scores.length} thousandSeparator />
-              </span>
-            </Text>
-          </Group>
-        );
-      })}
-    </Box>
-  );
-};
+      }
 
-const FullComboStatistics = ({ scores }: { scores: MaimaiScoreProps[] }) => {
-  const fc = ["app", "ap", "fcp", "fc"];
+      const fcIndex = fc.indexOf(score.fc);
+      if (fcIndex !== -1) {
+        addCumulativeCount(cumulativeFcCounts, fcIndex);
+      }
 
-  return (
-    <Box w="100%">
-      {fc.map((r, index) => (
-        <Group key={r} mb="xs" h={30} wrap="nowrap">
-          <Image src={`/assets/maimai/music_icon/${r}.webp`} h={30} w="auto" />
-          <Divider style={{ flex: 1 }} variant="dashed" />
-          <Text fz={20} style={{ lineHeight: rem(20) }}>
-            <NumberFormatter
-              value={
-                scores.filter((score) => {
-                  return fc.slice(0, index + 1).includes(score.fc);
-                }).length
-              }
-              thousandSeparator
-            />
-            <span style={{ fontSize: 16, marginLeft: 4 }}>
-              / <NumberFormatter value={scores.length} thousandSeparator />
-            </span>
-          </Text>
-        </Group>
-      ))}
-    </Box>
-  );
-};
+      const fsIndex = fs.indexOf(score.fs);
+      if (fsIndex !== -1) {
+        addCumulativeCount(cumulativeFsCounts, fsIndex);
+      }
+    }
 
-const FullSyncStatistics = ({ scores }: { scores: MaimaiScoreProps[] }) => {
-  const fs = ["fsdp", "fsd", "fsp", "fs"];
-
-  return (
-    <Box w="100%">
-      {fs.map((r, index) => (
-        <Group key={r} mb="xs" h={30} wrap="nowrap">
-          <Image src={`/assets/maimai/music_icon/${r}.webp`} h={30} w="auto" />
-          <Divider style={{ flex: 1 }} variant="dashed" />
-          <Text fz={20} style={{ lineHeight: rem(20) }}>
-            <NumberFormatter
-              value={
-                scores.filter((score) => {
-                  return fs.slice(0, index + 1).includes(score.fs);
-                }).length
-              }
-              thousandSeparator
-            />
-            <span style={{ fontSize: 16, marginLeft: 4 }}>
-              / <NumberFormatter value={scores.length} thousandSeparator />
-            </span>
-          </Text>
-        </Group>
-      ))}
-    </Box>
-  );
+    return {
+      rateCounts: cumulativeRateCounts,
+      fcCounts: cumulativeFcCounts,
+      fsCounts: cumulativeFsCounts,
+    };
+  }, [scores]);
 };
 
 export const MaimaiStatisticsSection = ({ scores }: { scores: MaimaiScoreProps[] }) => {
-  const small = useMediaQuery("(max-width: 30rem)");
   const extraSmall = useMediaQuery("(max-width: 28rem)");
+  const statistics = useStatistics(scores);
 
   return (
     <Card withBorder radius="md">
-      <Spoiler maxHeight={120} showLabel="显示详细统计信息..." hideLabel="隐藏详细统计信息">
-        <Grid gap={small ? "md" : "xl"}>
+      <Spoiler maxHeight={110} showLabel="显示详细分布..." hideLabel="隐藏详细分布">
+        <Grid gap="xl">
           <Grid.Col span={extraSmall ? 12 : 6}>
-            <RateStatistics scores={scores} />
+            <Text size="lg" fw={700} mb="xs">
+              达成率
+            </Text>
+            <RateStatistics rows={statistics.rateCounts} total={scores.length} />
           </Grid.Col>
           <Grid.Col span={extraSmall ? 12 : 6}>
             <Flex className={classes.fullComboSyncSection} gap="md">
-              <FullComboStatistics scores={scores} />
-              <FullSyncStatistics scores={scores} />
+              <Box w="100%">
+                <Text size="lg" fw={700} mb="xs">
+                  连击
+                </Text>
+                <FullComboStatistics rows={statistics.fcCounts} total={scores.length} />
+              </Box>
+              <Box w="100%">
+                <Text size="lg" fw={700} mb="xs">
+                  同步
+                </Text>
+                <FullSyncStatistics rows={statistics.fsCounts} total={scores.length} />
+              </Box>
             </Flex>
           </Grid.Col>
         </Grid>
